@@ -1148,6 +1148,73 @@ export default function App() {
   const [teamLabel, setTeamLabel] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false);
 
+  // "Se exempel på yta" — zoombar bildvisare (pinch/dubbeltryck/knappar)
+  const [ytaExampleOpen, setYtaExampleOpen] = useState(false);
+  const [ytaZoom, setYtaZoom] = useState(1);
+  const [ytaPan, setYtaPan] = useState({ x: 0, y: 0 });
+  const ytaDrag = React.useRef({ dragging: false, lastX: 0, lastY: 0 });
+  const ytaPinch = React.useRef({ startDist: 0, startZoom: 1 });
+  const ytaLastTap = React.useRef(0);
+
+  const resetYtaZoom = () => {
+    setYtaZoom(1);
+    setYtaPan({ x: 0, y: 0 });
+  };
+
+  const handleYtaDoubleTap = () => {
+    const now = Date.now();
+    if (now - ytaLastTap.current < 300) {
+      if (ytaZoom > 1) {
+        resetYtaZoom();
+      } else {
+        setYtaZoom(2.4);
+      }
+    }
+    ytaLastTap.current = now;
+  };
+
+  const handleYtaWheel = (e) => {
+    e.preventDefault();
+    setYtaZoom((z) => Math.min(4, Math.max(1, z - e.deltaY * 0.0015)));
+  };
+
+  const handleYtaTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      ytaPinch.current = { startDist: dist, startZoom: ytaZoom };
+    } else if (e.touches.length === 1 && ytaZoom > 1) {
+      ytaDrag.current = { dragging: true, lastX: e.touches[0].clientX, lastY: e.touches[0].clientY };
+    }
+  };
+
+  const handleYtaTouchMove = (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const { startDist, startZoom } = ytaPinch.current;
+      if (startDist > 0) {
+        setYtaZoom(Math.min(4, Math.max(1, startZoom * (dist / startDist))));
+      }
+    } else if (e.touches.length === 1 && ytaDrag.current.dragging) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - ytaDrag.current.lastX;
+      const dy = e.touches[0].clientY - ytaDrag.current.lastY;
+      setYtaPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+      ytaDrag.current.lastX = e.touches[0].clientX;
+      ytaDrag.current.lastY = e.touches[0].clientY;
+    }
+  };
+
+  const handleYtaTouchEnd = () => {
+    ytaDrag.current.dragging = false;
+  };
+
   const normalizeCode = (c) => c.trim().toUpperCase();
 
   const handleCodeSubmit = () => {
@@ -2231,6 +2298,193 @@ export default function App() {
             );
           })}
         </div>
+
+        {/* Se exempel på yta — öppnar zoombar bild */}
+        <div className="px-5 mt-4">
+          <button
+            onClick={() => {
+              resetYtaZoom();
+              setYtaExampleOpen(true);
+            }}
+            className="w-full flex items-center justify-center gap-2.5"
+            style={{
+              padding: "17px 16px",
+              borderRadius: 12,
+              background: "#1476C4",
+              color: "#fff",
+              fontFamily: "'Anton', sans-serif",
+              fontSize: "0.98rem",
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+              boxShadow: "0 8px 20px rgba(20,118,196,0.35)",
+              border: "none",
+            }}
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M8 12h8M12 8v8" />
+            </svg>
+            Se exempel på yta
+          </button>
+        </div>
+
+        {ytaExampleOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(11,42,61,0.97)",
+              zIndex: 50,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                flexShrink: 0,
+                padding: "max(14px, env(safe-area-inset-top)) 16px 14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "#0B2A3D",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: "#fff",
+                    fontSize: "0.78rem",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  EXEMPEL PÅ FÖRBEREDELSE AV YTA
+                </div>
+                <div style={{ color: "#8FB8D6", fontSize: "0.65rem", marginTop: 2 }}>
+                  Nyp för att zooma, eller dubbeltryck
+                </div>
+              </div>
+              <button
+                onClick={() => setYtaExampleOpen(false)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.12)",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: "1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                overflow: "hidden",
+                position: "relative",
+                touchAction: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onWheel={handleYtaWheel}
+              onClick={handleYtaDoubleTap}
+              onTouchStart={handleYtaTouchStart}
+              onTouchMove={handleYtaTouchMove}
+              onTouchEnd={handleYtaTouchEnd}
+            >
+              <img
+                src="/exempel-yta.png"
+                alt="Exempel på förberedelse av yta"
+                draggable={false}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  touchAction: "none",
+                  userSelect: "none",
+                  transformOrigin: "0 0",
+                  transform: `translate(${ytaPan.x}px, ${ytaPan.y}px) scale(${ytaZoom})`,
+                  borderRadius: 4,
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 14,
+                  right: 14,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  zIndex: 5,
+                }}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setYtaZoom((z) => Math.min(4, z + 0.5));
+                  }}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,0.95)",
+                    border: "none",
+                    fontSize: "1.1rem",
+                    fontWeight: 700,
+                    color: "#0B2A3D",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                  }}
+                >
+                  +
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setYtaZoom((z) => {
+                      const nz = Math.max(1, z - 0.5);
+                      if (nz === 1) setYtaPan({ x: 0, y: 0 });
+                      return nz;
+                    });
+                  }}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,0.95)",
+                    border: "none",
+                    fontSize: "1.1rem",
+                    fontWeight: 700,
+                    color: "#0B2A3D",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                  }}
+                >
+                  −
+                </button>
+              </div>
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 14,
+                  left: 14,
+                  color: "rgba(255,255,255,0.55)",
+                  fontSize: "0.62rem",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  zIndex: 5,
+                }}
+              >
+                Dra för att panorera när inzoomad
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Equipment + rules */}
         <div className="px-5 mt-6 grid grid-cols-1 gap-4">
