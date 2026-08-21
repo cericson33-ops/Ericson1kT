@@ -22,15 +22,20 @@ const FONTS = `
 `;
 
 // Giltiga aktiveringskoder, med lag-etikett för välkomstrutan. Lägg till/ta bort koder här vid behov.
+// Aktiveringskoder — varje kod har en etikett (lagnamn) och ett utgångsdatum.
+// `expires: null` betyder att koden aldrig går ut (används för admin-koden).
+// Sätt utgångsdatum i formatet "ÅÅÅÅ-MM-DD" (t.ex. säsongsslut 30 november) när
+// lagkoder läggs till igen.
 const VALID_CODES = {
-  "EFK-ADMIN-9K2X": null,
-  "EFK-TRANARE-BPXE": null,
-  "EFK-P6-WAJH": "Ericson P6",
-  "EFK-P7-ZX6C": "Ericson P7",
-  "EFK-P8-PAGS": "Ericson P8",
-  "EFK-P9-AGWT": "Ericson P9",
-  "EFK-P10-HU3A": "Ericson P10",
+  "EFK-ADMIN-9K2X": { label: null, expires: null },
 };
+
+// Sant om koden har ett utgångsdatum som har passerat (jämfört med dagens datum).
+function isCodeExpired(entry) {
+  if (!entry || !entry.expires) return false;
+  const expiry = new Date(entry.expires + "T23:59:59");
+  return new Date() > expiry;
+}
 
 // Enkla grafiska diagram som illustrerar övningens uppställning.
 // Nyckeln måste matcha övningens namn exakt.
@@ -545,6 +550,92 @@ const DIAGRAMS = {
     ),
   },
 };
+
+// ============ VIDEO ============
+// Lägg till en video för en övning genom att sätta `video: "..."` på dess
+// DIAGRAMS-post ovan, t.ex:
+//   Tunnelkull: { video: "https://youtu.be/XXXXXXXX", caption: "...", svg: (...) }
+// Stödjer YouTube-länkar, Vimeo-länkar, eller en direkt videofil (.mp4/.webm/.mov,
+// t.ex. en fil du lagt i /public/videos/tunnelkull.mp4 och länkat som "/videos/tunnelkull.mp4").
+// Om ingen video är satt visas SVG-diagrammet som vanligt.
+
+function getYouTubeId(url) {
+  const m = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/
+  );
+  return m ? m[1] : null;
+}
+
+function getVimeoId(url) {
+  const m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  return m ? m[1] : null;
+}
+
+function isDirectVideoFile(url) {
+  return /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(url);
+}
+
+// Visar övningens video om en sådan finns, annars faller tillbaka på SVG-diagrammet.
+function ExerciseMedia({ diagram }) {
+  const url = diagram?.video;
+
+  if (url) {
+    const ytId = getYouTubeId(url);
+    const vimeoId = getVimeoId(url);
+
+    if (ytId) {
+      return (
+        <div
+          className="rounded-lg overflow-hidden"
+          style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000" }}
+        >
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${ytId}`}
+            title={diagram.caption || "Övningsvideo"}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+          />
+        </div>
+      );
+    }
+
+    if (vimeoId) {
+      return (
+        <div
+          className="rounded-lg overflow-hidden"
+          style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000" }}
+        >
+          <iframe
+            src={`https://player.vimeo.com/video/${vimeoId}`}
+            title={diagram.caption || "Övningsvideo"}
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+          />
+        </div>
+      );
+    }
+
+    if (isDirectVideoFile(url)) {
+      return (
+        <video
+          controls
+          playsInline
+          preload="metadata"
+          className="w-full rounded-lg"
+          style={{ background: "#000", display: "block" }}
+        >
+          <source src={url} />
+          Din webbläsare kan inte spela upp videon.
+        </video>
+      );
+    }
+  }
+
+  // Ingen video (eller okänt videoformat) — visa SVG-diagrammet som vanligt.
+  return diagram?.svg || null;
+}
 
 // Ritar N mini-spelplaner sida vid sida med angivet format (t.ex. "3v3").
 function PitchDiagram({ count, format, configs }) {
@@ -1061,10 +1152,15 @@ export default function App() {
 
   const handleCodeSubmit = () => {
     const cleaned = normalizeCode(codeInput);
-    if (Object.prototype.hasOwnProperty.call(VALID_CODES, cleaned)) {
+    const entry = VALID_CODES[cleaned];
+    if (entry) {
+      if (isCodeExpired(entry)) {
+        setCodeError("expired");
+        return;
+      }
       setCodeError(false);
       setUnlocking(true);
-      setTeamLabel(VALID_CODES[cleaned]);
+      setTeamLabel(entry.label);
       try {
         localStorage.setItem("ericson1000:access-code", cleaned);
       } catch (e) {
@@ -1076,7 +1172,7 @@ export default function App() {
         checkFirstTimeWelcome(cleaned);
       }, 620);
     } else {
-      setCodeError(true);
+      setCodeError("invalid");
     }
   };
 
@@ -1096,9 +1192,14 @@ export default function App() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("ericson1000:access-code");
-      if (saved && Object.prototype.hasOwnProperty.call(VALID_CODES, normalizeCode(saved))) {
+      const entry = saved ? VALID_CODES[normalizeCode(saved)] : null;
+      if (entry && !isCodeExpired(entry)) {
         setAccessGranted(true);
-        setTeamLabel(VALID_CODES[normalizeCode(saved)]);
+        setTeamLabel(entry.label);
+      } else if (entry && isCodeExpired(entry)) {
+        // Koden har gått ut sedan förra gången — logga ut och visa ett tydligt meddelande.
+        localStorage.removeItem("ericson1000:access-code");
+        setCodeError("expired");
       }
     } catch (e) {
       // ingen sparad kod ännu
@@ -1278,7 +1379,9 @@ export default function App() {
                 marginBottom: "1.1rem",
               }}
             >
-              ⚠ Koden stämmer inte. Kontrollera att du skrivit rätt.
+              {codeError === "expired"
+                ? "⚠ Den här kodens säsong har gått ut. Kontakta din förening för en ny kod."
+                : "⚠ Koden stämmer inte. Kontrollera att du skrivit rätt."}
             </div>
           )}
           <button
@@ -1881,7 +1984,7 @@ export default function App() {
                                       className="rounded-lg p-2"
                                       style={{ background: "#F7F8FA", border: "1px solid #E6E9ED" }}
                                     >
-                                      {diagram.svg}
+                                      <ExerciseMedia diagram={diagram} />
                                       <p
                                         className="mt-1 text-xs text-center"
                                         style={{ color: "#146C93", padding: "0 0.25rem" }}
@@ -1982,7 +2085,7 @@ export default function App() {
                                     className="rounded-lg p-2"
                                     style={{ background: "#F7F8FA", border: "1px solid #E6E9ED" }}
                                   >
-                                    {diagram.svg}
+                                    <ExerciseMedia diagram={diagram} />
                                     <p
                                       className="mt-1 text-xs text-center"
                                       style={{ color: "#146C93", padding: "0 0.25rem" }}
@@ -2109,7 +2212,7 @@ export default function App() {
                                   className="rounded-lg p-2"
                                   style={{ background: "#F7F8FA", border: "1px solid #E6E9ED" }}
                                 >
-                                  {DIAGRAMS[exName].svg}
+                                  <ExerciseMedia diagram={DIAGRAMS[exName]} />
                                   <p
                                     className="mt-1 text-xs text-center"
                                     style={{ color: "#146C93", padding: "0 0.25rem" }}
