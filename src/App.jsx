@@ -2395,7 +2395,12 @@ export default function App() {
                 justifyContent: "center",
               }}
               onWheel={handleYtaWheel}
-              onClick={handleYtaDoubleTap}
+              onClick={(e) => {
+                // Tryck på mörka bakgrunden (inte på själva bilden) stänger modalen.
+                if (e.target === e.currentTarget) {
+                  setYtaExampleOpen(false);
+                }
+              }}
               onTouchStart={handleYtaTouchStart}
               onTouchMove={handleYtaTouchMove}
               onTouchEnd={handleYtaTouchEnd}
@@ -2404,6 +2409,7 @@ export default function App() {
                 src="/exempel-yta.png"
                 alt="Exempel på förberedelse av yta"
                 draggable={false}
+                onClick={handleYtaDoubleTap}
                 style={{
                   maxWidth: "100%",
                   maxHeight: "100%",
@@ -2482,6 +2488,27 @@ export default function App() {
               >
                 Dra för att panorera när inzoomad
               </div>
+            </div>
+
+            {/* Extra, tydligt märkt stäng-knapp längst ner — garanterad reservväg tillbaka */}
+            <div style={{ flexShrink: 0, padding: "12px 16px max(12px, env(safe-area-inset-bottom))", background: "#0B2A3D" }}>
+              <button
+                onClick={() => setYtaExampleOpen(false)}
+                className="w-full"
+                style={{
+                  padding: "13px 0",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.12)",
+                  border: "1.5px solid rgba(255,255,255,0.3)",
+                  color: "#fff",
+                  fontFamily: "'Anton', sans-serif",
+                  fontSize: "0.85rem",
+                  letterSpacing: "0.03em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Stäng och gå tillbaka
+              </button>
             </div>
           </div>
         )}
