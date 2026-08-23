@@ -2937,14 +2937,14 @@ export default function App() {
           <div
             className="fixed"
             style={{
-              right: 88,
-              bottom: "calc(38px + env(safe-area-inset-bottom))",
+              right: 84,
+              bottom: "calc(41px + env(safe-area-inset-bottom))",
               background: "#0B2A3D",
               color: "#fff",
-              padding: "9px 14px",
-              borderRadius: 20,
+              padding: "6px 12px",
+              borderRadius: 999,
               fontFamily: "'Anton', sans-serif",
-              fontSize: "0.7rem",
+              fontSize: "0.58rem",
               letterSpacing: "0.02em",
               textTransform: "uppercase",
               whiteSpace: "nowrap",
