@@ -33,6 +33,7 @@ const FONTS = `
 // lagkoder läggs till igen.
 const VALID_CODES = {
   "EFK-ADMIN-9K2X": { label: null, expires: null },
+  "EFK-TRANARE-UWXN": { label: null, expires: null },
 };
 
 // Sant om koden har ett utgångsdatum som har passerat (jämfört med dagens datum).
@@ -86,7 +87,8 @@ const DIAGRAMS = {
     ),
   },
   Stoppljus: {
-    caption: "Alla driver boll fritt i ytan. Frys på RÖTT, kör vidare på GRÖNT.",
+    caption:
+      "Alla driver boll fritt i ytan. Frys på RÖTT, kör vidare på GRÖNT. På GULT kan man t.ex. gå med bollen.",
     svg: (
       <svg viewBox="0 0 300 190" className="w-full h-auto">
         <rect x="10" y="10" width="280" height="170" rx="14" fill="none" stroke="#C3C9CF" strokeWidth="2" strokeDasharray="6 6" />
@@ -97,10 +99,11 @@ const DIAGRAMS = {
             <circle cx={x+11} cy={y+8} r="4" fill="#146C93" />
           </g>
         ))}
-        {/* signal-ikon */}
-        <rect x="255" y="20" width="20" height="42" rx="5" fill="#fff" stroke="#262A2E" strokeWidth="2" />
-        <circle cx="265" cy="30" r="5" fill="#28A9E2" />
-        <circle cx="265" cy="52" r="5" fill="#4C9A5A" />
+        {/* signal-ikon: rött, gult, grönt */}
+        <rect x="252" y="14" width="26" height="62" rx="7" fill="#fff" stroke="#262A2E" strokeWidth="2" />
+        <circle cx="265" cy="28" r="6" fill="#D6453D" />
+        <circle cx="265" cy="45" r="6" fill="#E8B93E" />
+        <circle cx="265" cy="62" r="6" fill="#4C9A5A" />
       </svg>
     ),
   },
@@ -2925,6 +2928,32 @@ export default function App() {
                 Stäng och gå tillbaka
               </button>
             </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Etikett bredvid knappen: bygg eget pass */}
+        {createPortal(
+          <div
+            className="fixed"
+            style={{
+              right: 88,
+              bottom: "calc(38px + env(safe-area-inset-bottom))",
+              background: "#0B2A3D",
+              color: "#fff",
+              padding: "9px 14px",
+              borderRadius: 20,
+              fontFamily: "'Anton', sans-serif",
+              fontSize: "0.7rem",
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              boxShadow: "0 6px 14px rgba(11,42,61,0.3)",
+              zIndex: 39,
+              pointerEvents: "none",
+            }}
+          >
+            Bygg eget pass
           </div>,
           document.body
         )}
