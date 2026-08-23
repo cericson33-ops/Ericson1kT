@@ -254,8 +254,9 @@ const DIAGRAMS = {
       </svg>
     ),
   },
-  Reaktionskull: {
-    caption: "Alla driver egen boll fritt. På signal lämnas den egna bollen genast — närmaste spelare rusar för att erövra en grannes boll innan de hinner reagera.",
+  Reaktionsboll: {
+    caption:
+      "Alla driver varsin boll fritt i ytan. På signal lämnar alla direkt sin egen boll och rusar för att hitta en annan ledig boll.",
     svg: (
       <svg viewBox="0 0 300 190" className="w-full h-auto">
         <rect x="10" y="10" width="280" height="170" rx="14" fill="none" stroke="#C3C9CF" strokeWidth="2" strokeDasharray="6 6" />
@@ -777,7 +778,7 @@ const AGE_GROUPS = [
           "Stoppljus",
           "Svansleken",
           "Poängjakten",
-          "Reaktionskull",
+          "Reaktionsboll",
           "Byta yta",
           "Fotbollshjärnan",
         ],
@@ -862,7 +863,7 @@ const AGE_GROUPS = [
           "Max 3–4 spelare per boll, ingen kö längre än 2–3.",
           "Börja introducera 1v1, först utan boll sedan bygga vidare med boll.",
         ],
-        exercises: ["Fri yta", "Djurgården", "1v1", "Kvadraten", "Byta yta", "Passningsportar", "Reaktionskull"],
+        exercises: ["Fri yta", "Djurgården", "1v1", "Kvadraten", "Byta yta", "Passningsportar", "Reaktionsboll"],
       },
       {
         title: "Tematiskt smålagsspel",
@@ -933,7 +934,7 @@ const AGE_GROUPS = [
           "Kvadraten (4v1 & 3v1)",
           "Byta yta",
           "Passningsportar",
-          "Reaktionskull",
+          "Reaktionsboll",
         ],
       },
       {
@@ -1102,9 +1103,9 @@ const YOUNG_THEMES = [
 ];
 
 // Extra övningar i block 1 som bara visas när ett visst tema är valt (gäller inte 6–7 år —
-// där ligger alla övningar, inklusive Reaktionskull/Byta yta/Fotbollshjärnan, fast utan temakoppling).
+// där ligger alla övningar, inklusive Reaktionsboll/Byta yta/Fotbollshjärnan, fast utan temakoppling).
 const THEME_BLOCK1_EXTRAS = {
-  omstallning: ["Reaktionskull", "Byta yta"],
+  omstallning: ["Reaktionsboll", "Byta yta"],
 };
 
 // Coachningspunkter per övning i block 3 (8–9 och 10 år bara — inte 6–7 år).
@@ -1129,9 +1130,9 @@ const COACHING_POINTS = {
     "Passa med bestämdhet genom porten",
     "Spring direkt till en ny port efter passet",
   ],
-  Reaktionskull: [
+  Reaktionsboll: [
     "Snabb första steg efter signalen",
-    "Låg tyngdpunkt och redo att reagera åt båda hållen",
+    "Scanna av ytan snabbt — vart är närmaste lediga boll?",
     "Koppla till omställning: samma skärpa krävs direkt efter bollvinst/bollförlust",
   ],
 };
@@ -1143,7 +1144,7 @@ const THEME_EXERCISE_HIGHLIGHT = {
   passning: ["Kvadraten", "Kvadraten (4v1 & 3v1)", "Passningsportar"],
   scanning: ["Djurgården", "Kvadraten", "Kvadraten (4v1 & 3v1)", "Passningsportar"],
   forsvarsspel: ["1v1"],
-  omstallning: ["Reaktionskull", "Byta yta"],
+  omstallning: ["Reaktionsboll", "Byta yta"],
 };
 
 // Renderar ett övningsdiagram (React SVG-element från DIAGRAMS) till en PNG data-URL,
