@@ -1409,10 +1409,6 @@ export default function App() {
     });
   };
 
-  const builderToggleCoaching = (text) => {
-    setBuilderCoaching((prev) => (prev.includes(text) ? prev.filter((t) => t !== text) : [...prev, text]));
-  };
-
   const builderAddCustomCoaching = () => {
     const text = builderCustomCoachingInput.trim();
     if (!text) return;
@@ -3633,19 +3629,14 @@ export default function App() {
                       Tränarens tumregler
                     </h3>
                     <p style={{ fontSize: "0.78rem", color: "#8A929B", marginBottom: 12 }}>
-                      Följer med i PDF:en som allmänna riktlinjer för passet. Bocka ur det som inte passar, eller lägg till egna.
+                      Följer alltid med i PDF:en som allmänna riktlinjer för passet. Du kan lägga till egna nedan.
                     </p>
                     <div className="flex flex-col gap-2 mb-4">
                       {builderCoaching.map((point, i) => (
-                        <label key={i} className="flex items-start gap-2" style={{ fontSize: "0.85rem", color: "#262A2E" }}>
-                          <input
-                            type="checkbox"
-                            checked
-                            onChange={() => builderToggleCoaching(point)}
-                            style={{ marginTop: 3, flexShrink: 0 }}
-                          />
+                        <div key={i} className="flex items-start gap-2" style={{ fontSize: "0.85rem", color: "#262A2E" }}>
+                          <Droplets size={13} className="flex-shrink-0 mt-1" style={{ color: "#28A9E2", opacity: 0.6 }} />
                           <span>{point}</span>
-                        </label>
+                        </div>
                       ))}
                     </div>
                     <div className="flex gap-1.5 mb-6">
