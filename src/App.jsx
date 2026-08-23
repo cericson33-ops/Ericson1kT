@@ -1182,6 +1182,25 @@ function svgToPngDataUrl(svgReactEl, targetWidthPx = 560) {
   });
 }
 
+// Vissa övningsbeskrivningar (t.ex. Fotbollshjärnan) är skrivna som formaterad text
+// med <br/>-radbrytningar istället för en ren sträng. jsPDF kan bara hantera strängar,
+// så vi gör om innehållet till ren text (med radbrytningar bevarade) innan det skrivs ut.
+function captionToPlainText(caption) {
+  if (!caption) return "";
+  if (typeof caption === "string") return caption;
+  try {
+    const html = renderToStaticMarkup(caption);
+    const withBreaks = html.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n");
+    const stripped = withBreaks.replace(/<[^>]+>/g, "");
+    const div = document.createElement("div");
+    div.innerHTML = stripped;
+    return (div.textContent || div.innerText || "").trim();
+  } catch (err) {
+    console.error("Kunde inte tolka övningsbeskrivning för PDF", err);
+    return "";
+  }
+}
+
 export default function App() {
   const [ageId, setAgeId] = useState("6-7");
   const [themeId, setThemeId] = useState("anfallsspel");
@@ -1569,15 +1588,22 @@ export default function App() {
                 ensureSpace(imgH + 10);
                 doc.addImage(dataUrl, "PNG", marginX, y, imgW, imgH);
                 y += imgH + 8;
-                if (diagram.caption) {
+                const captionText = captionToPlainText(diagram.caption);
+                if (captionText) {
                   doc.setFont("helvetica", "italic");
                   doc.setFontSize(9);
                   doc.setTextColor(140, 150, 160);
-                  const capLines = doc.splitTextToSize(diagram.caption, bodyWidth);
-                  capLines.forEach((line) => {
-                    ensureSpace(12);
-                    doc.text(line, marginX, y);
-                    y += 12;
+                  captionText.split("\n").forEach((para) => {
+                    if (!para.trim()) {
+                      y += 6;
+                      return;
+                    }
+                    const capLines = doc.splitTextToSize(para, bodyWidth);
+                    capLines.forEach((line) => {
+                      ensureSpace(12);
+                      doc.text(line, marginX, y);
+                      y += 12;
+                    });
                   });
                   y += 4;
                 }
