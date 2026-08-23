@@ -3242,7 +3242,15 @@ export default function App() {
                     {builderBlocks.map((block, idx) => {
                       const ageForBuilder = AGE_GROUPS.find((a) => a.id === builderAgeId);
                       const ageBlock = ageForBuilder && ageForBuilder.blocks[idx];
-                      const options = ageBlock ? ageBlock.exercises || ageBlock.altExercises || [] : [];
+                      let options = ageBlock ? ageBlock.exercises || ageBlock.altExercises || [] : [];
+                      if (
+                        idx === 0 &&
+                        builderAgeId !== "6-7" &&
+                        builderThemeId &&
+                        THEME_BLOCK1_EXTRAS[builderThemeId]
+                      ) {
+                        options = [...options, ...THEME_BLOCK1_EXTRAS[builderThemeId].filter((x) => !options.includes(x))];
+                      }
                       const canRemove = idx >= 4;
 
                       return (
