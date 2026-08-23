@@ -2716,32 +2716,51 @@ export default function App() {
           })}
         </div>
 
-        {/* Se exempel på yta — öppnar zoombar bild */}
+        {/* Bygg eget pass — direkt under block 4 */}
         <div className="px-5 mt-4">
           <button
-            onClick={() => {
-              resetYtaZoom();
-              setYtaExampleOpen(true);
-            }}
-            className="w-full flex items-center justify-center gap-2.5"
+            onClick={() => setBuilderOpen(true)}
+            className="w-full flex items-center gap-3"
             style={{
-              padding: "17px 16px",
+              padding: "15px 16px",
               borderRadius: 12,
-              background: "#1476C4",
+              background: "linear-gradient(135deg, #1476C4, #146C93)",
               color: "#fff",
-              fontFamily: "'Anton', sans-serif",
-              fontSize: "0.98rem",
-              letterSpacing: "0.02em",
-              textTransform: "uppercase",
-              boxShadow: "0 8px 20px rgba(20,118,196,0.35)",
+              boxShadow: "0 8px 20px rgba(20,118,196,0.3)",
               border: "none",
+              textAlign: "left",
             }}
           >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M8 12h8M12 8v8" />
-            </svg>
-            Se exempel på yta
+            <span
+              className="flex items-center justify-center flex-shrink-0"
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.2)",
+                fontSize: "1.3rem",
+                fontWeight: 300,
+              }}
+            >
+              +
+            </span>
+            <span className="flex-1">
+              <span
+                style={{
+                  display: "block",
+                  fontFamily: "'Anton', sans-serif",
+                  fontSize: "0.85rem",
+                  letterSpacing: "0.02em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Bygg eget pass
+              </span>
+              <span style={{ display: "block", fontSize: "0.68rem", opacity: 0.85, marginTop: 1 }}>
+                Sätt ihop block & dela som PDF
+              </span>
+            </span>
+            <ChevronRight size={18} style={{ opacity: 0.7, flexShrink: 0 }} />
           </button>
         </div>
 
@@ -2929,59 +2948,6 @@ export default function App() {
               </button>
             </div>
           </div>,
-          document.body
-        )}
-
-        {/* Etikett bredvid knappen: bygg eget pass */}
-        {createPortal(
-          <div
-            className="fixed"
-            style={{
-              right: 84,
-              bottom: "calc(41px + env(safe-area-inset-bottom))",
-              background: "#0B2A3D",
-              color: "#fff",
-              padding: "6px 12px",
-              borderRadius: 999,
-              fontFamily: "'Anton', sans-serif",
-              fontSize: "0.58rem",
-              letterSpacing: "0.02em",
-              textTransform: "uppercase",
-              whiteSpace: "nowrap",
-              boxShadow: "0 6px 14px rgba(11,42,61,0.3)",
-              zIndex: 39,
-              pointerEvents: "none",
-            }}
-          >
-            Bygg eget pass
-          </div>,
-          document.body
-        )}
-
-        {/* Flytande knapp: bygg egen träning */}
-        {createPortal(
-          <button
-            onClick={() => setBuilderOpen(true)}
-            className="fixed flex items-center justify-center"
-            style={{
-              right: 20,
-              bottom: "calc(20px + env(safe-area-inset-bottom))",
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: "#1476C4",
-              color: "#fff",
-              fontSize: "1.8rem",
-              fontWeight: 300,
-              lineHeight: 1,
-              border: "none",
-              boxShadow: "0 10px 24px rgba(20,118,196,0.5)",
-              zIndex: 40,
-            }}
-            aria-label="Bygg egen träning"
-          >
-            +
-          </button>,
           document.body
         )}
 
@@ -3874,6 +3840,33 @@ export default function App() {
               Standardyta: ca 15×10 m — fungerar för de flesta övningar och lekar. Bredare vid fyra mål. Räkna med flera parallella ytor vid större grupper.
             </div>
           </div>
+
+          {/* Se exempel på yta — öppnar zoombar bild */}
+          <button
+            onClick={() => {
+              resetYtaZoom();
+              setYtaExampleOpen(true);
+            }}
+            className="w-full flex items-center justify-center gap-2.5"
+            style={{
+              padding: "17px 16px",
+              borderRadius: 12,
+              background: "#1476C4",
+              color: "#fff",
+              fontFamily: "'Anton', sans-serif",
+              fontSize: "0.98rem",
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+              boxShadow: "0 8px 20px rgba(20,118,196,0.35)",
+              border: "none",
+            }}
+          >
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M8 12h8M12 8v8" />
+            </svg>
+            Se exempel på yta
+          </button>
 
           <div className="rounded-2xl p-4" style={{ background: "#fff", border: "1px solid #DDE2E7" }}>
             <div className="flex items-center gap-2 mb-2">
