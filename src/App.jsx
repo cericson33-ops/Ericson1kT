@@ -862,7 +862,7 @@ const AGE_GROUPS = [
           "Max 3–4 spelare per boll, ingen kö längre än 2–3.",
           "Börja introducera 1v1, först utan boll sedan bygga vidare med boll.",
         ],
-        exercises: ["Fri yta", "Djurgården", "1v1", "Kvadraten", "Byta yta", "Passningsportar"],
+        exercises: ["Fri yta", "Djurgården", "1v1", "Kvadraten", "Byta yta", "Passningsportar", "Reaktionskull"],
       },
       {
         title: "Tematiskt smålagsspel",
@@ -933,6 +933,7 @@ const AGE_GROUPS = [
           "Kvadraten (4v1 & 3v1)",
           "Byta yta",
           "Passningsportar",
+          "Reaktionskull",
         ],
       },
       {
@@ -1128,6 +1129,11 @@ const COACHING_POINTS = {
     "Passa med bestämdhet genom porten",
     "Spring direkt till en ny port efter passet",
   ],
+  Reaktionskull: [
+    "Snabb första steg efter signalen",
+    "Låg tyngdpunkt och redo att reagera åt båda hållen",
+    "Koppla till omställning: samma skärpa krävs direkt efter bollvinst/bollförlust",
+  ],
 };
 
 // Vilka block 3-övningar (8–9/10 år) som highlightas som relevanta för respektive tema.
@@ -1137,7 +1143,7 @@ const THEME_EXERCISE_HIGHLIGHT = {
   passning: ["Kvadraten", "Kvadraten (4v1 & 3v1)", "Passningsportar"],
   scanning: ["Djurgården", "Kvadraten", "Kvadraten (4v1 & 3v1)", "Passningsportar"],
   forsvarsspel: ["1v1"],
-  omstallning: ["Byta yta"],
+  omstallning: ["Reaktionskull", "Byta yta"],
 };
 
 // Renderar ett övningsdiagram (React SVG-element från DIAGRAMS) till en PNG data-URL,
@@ -1328,7 +1334,7 @@ export default function App() {
           useCustomExercise: options.length === 0,
           customExercise: "",
           constraints: [],
-          richPdf: idx === 2, // tekniska blockets övning tar med diagram + coachingpunkter i PDF
+          richPdf: idx === 0 || idx === 2, // uppvärmning + tekniska blocket tar med diagram (+ ev. coachingpunkter) i PDF
         };
       });
       setBuilderBlocks(blocks);
