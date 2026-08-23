@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { renderToStaticMarkup } from "react-dom/server";
 import { ChevronRight, ChevronDown, Droplets, Users2, Cone, Dumbbell } from "lucide-react";
 import { jsPDF } from "jspdf";
 
@@ -1136,6 +1137,42 @@ const THEME_EXERCISE_HIGHLIGHT = {
   omstallning: ["Byta yta"],
 };
 
+// Renderar ett övningsdiagram (React SVG-element från DIAGRAMS) till en PNG data-URL,
+// så det kan bäddas in i den genererade PDF:en. jsPDF kan inte rita React-SVG direkt,
+// så vi går via en osynlig canvas: SVG → Blob → Image → Canvas → PNG.
+function svgToPngDataUrl(svgReactEl, targetWidthPx = 560) {
+  return new Promise((resolve, reject) => {
+    try {
+      let markup = renderToStaticMarkup(svgReactEl);
+      if (!markup.includes("xmlns=")) {
+        markup = markup.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+      const svgBlob = new Blob([markup], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.onload = () => {
+        const ratio = img.height / img.width || 190 / 300;
+        const canvas = document.createElement("canvas");
+        canvas.width = targetWidthPx;
+        canvas.height = Math.round(targetWidthPx * ratio);
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve({ dataUrl: canvas.toDataURL("image/png"), width: canvas.width, height: canvas.height });
+      };
+      img.onerror = (e) => {
+        URL.revokeObjectURL(url);
+        reject(e);
+      };
+      img.src = url;
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
 export default function App() {
   const [ageId, setAgeId] = useState("6-7");
   const [themeId, setThemeId] = useState("anfallsspel");
@@ -1242,13 +1279,16 @@ export default function App() {
 
   // ---- Träningsbyggare: bygg eget pass, dela som PDF (WhatsApp/mejl m.m.) ----
   const [builderOpen, setBuilderOpen] = useState(false);
-  const [builderStep, setBuilderStep] = useState(1); // 1 ålder/tema · 2 block · 3 coaching+sammanfattning
+  const [builderStep, setBuilderStep] = useState(1); // 1 ålder/tema · 2 block · 3 tumregler+sammanfattning
   const [builderAgeId, setBuilderAgeId] = useState(null);
+  const [builderThemeId, setBuilderThemeId] = useState(null);
   const [builderThemeName, setBuilderThemeName] = useState("");
   const [builderBlocks, setBuilderBlocks] = useState([]);
   const [builderConstraintInputs, setBuilderConstraintInputs] = useState({});
   const [builderCoaching, setBuilderCoaching] = useState([]);
   const [builderCustomCoachingInput, setBuilderCustomCoachingInput] = useState("");
+  const [builderOpening, setBuilderOpening] = useState({ time: "5 min", note: "" });
+  const [builderClosing, setBuilderClosing] = useState({ time: "5 min", note: "" });
   const [builderGenerating, setBuilderGenerating] = useState(false);
 
   React.useEffect(() => {
@@ -1264,34 +1304,63 @@ export default function App() {
   const builderSelectAge = (id) => {
     const age = AGE_GROUPS.find((a) => a.id === id);
     setBuilderAgeId(id);
+    setBuilderThemeId(null);
     if (age) {
-      setBuilderBlocks(
-        age.blocks.map((b) => {
-          const options = b.exercises || b.altExercises || [];
-          return {
-            title: b.title,
-            time: b.time,
-            exercise: options[0] || "",
-            useCustomExercise: options.length === 0,
-            customExercise: "",
-            constraints: [],
-          };
-        })
-      );
+      const blocks = age.blocks.map((b, idx) => {
+        if (idx === 1) {
+          // Block 2: fritt smålagsspel — ingen övning, inga constraints, bara info.
+          return { type: "free", title: b.title, time: b.time, infoPoints: b.points || [] };
+        }
+        if (idx === 3) {
+          // Block 4: tematiskt smålagsspel — constraints kopplade till valt tema, ingen övning.
+          return { type: "themed", title: b.title, time: b.time, themeOptions: [], customConstraints: [] };
+        }
+        // Block 1 (uppvärmning) och block 3 (tekniskt block): övning som vanligt.
+        const options = b.exercises || b.altExercises || [];
+        return {
+          type: "exercise",
+          title: b.title,
+          time: b.time,
+          exercise: options[0] || "",
+          useCustomExercise: options.length === 0,
+          customExercise: "",
+          constraints: [],
+          richPdf: idx === 2, // tekniska blockets övning tar med diagram + coachingpunkter i PDF
+        };
+      });
+      setBuilderBlocks(blocks);
       setBuilderCoaching([...age.rules]);
+      setBuilderOpening({ time: "5 min", note: "Samla laget, presentera dagens tema och fokus." });
+      setBuilderClosing({ time: "5 min", note: "Kort utvärdering: vad gick bra? Vad kan vi bli bättre på?" });
     }
+  };
+
+  const builderSelectTheme = (id) => {
+    setBuilderThemeId(id);
+    const isYoung = builderAgeId === "6-7";
+    const themeList = isYoung ? YOUNG_THEMES : THEMES;
+    const theme = themeList.find((t) => t.id === id);
+    const items = isYoung
+      ? (theme?.points || []).map((text) => ({ text, selected: true }))
+      : (theme?.constraints || []).map((c) => ({ text: c.text, selected: true }));
+
+    setBuilderBlocks((prev) =>
+      prev.map((b, idx) => (idx === 3 ? { ...b, themeOptions: items, customConstraints: [] } : b))
+    );
   };
 
   const builderAddBlock = () => {
     setBuilderBlocks((prev) => [
       ...prev,
       {
+        type: "exercise",
         title: `Block ${prev.length + 1}`,
         time: "10 min",
         exercise: "",
         useCustomExercise: true,
         customExercise: "",
         constraints: [],
+        richPdf: false,
       },
     ]);
   };
@@ -1317,6 +1386,29 @@ export default function App() {
     });
   };
 
+  const builderToggleThemeOption = (idx, optIdx) => {
+    setBuilderBlocks((prev) =>
+      prev.map((b, i) =>
+        i === idx
+          ? { ...b, themeOptions: b.themeOptions.map((o, oi) => (oi === optIdx ? { ...o, selected: !o.selected } : o)) }
+          : b
+      )
+    );
+  };
+
+  const builderAddCustomConstraint = (idx) => {
+    const text = (builderConstraintInputs[idx] || "").trim();
+    if (!text) return;
+    builderUpdateBlock(idx, { customConstraints: [...(builderBlocks[idx].customConstraints || []), text] });
+    setBuilderConstraintInputs((prev) => ({ ...prev, [idx]: "" }));
+  };
+
+  const builderRemoveCustomConstraint = (idx, cIdx) => {
+    builderUpdateBlock(idx, {
+      customConstraints: builderBlocks[idx].customConstraints.filter((_, i) => i !== cIdx),
+    });
+  };
+
   const builderToggleCoaching = (text) => {
     setBuilderCoaching((prev) => (prev.includes(text) ? prev.filter((t) => t !== text) : [...prev, text]));
   };
@@ -1332,11 +1424,14 @@ export default function App() {
     setBuilderOpen(false);
     setBuilderStep(1);
     setBuilderAgeId(null);
+    setBuilderThemeId(null);
     setBuilderThemeName("");
     setBuilderBlocks([]);
     setBuilderCoaching([]);
     setBuilderConstraintInputs({});
     setBuilderCustomCoachingInput("");
+    setBuilderOpening({ time: "5 min", note: "" });
+    setBuilderClosing({ time: "5 min", note: "" });
   };
 
   const builderGeneratePdfAndShare = async () => {
@@ -1345,11 +1440,53 @@ export default function App() {
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
       const marginX = 48;
+      const bodyWidth = pageWidth - marginX * 2;
       let y = 56;
 
       const ageLabel = AGE_GROUPS.find((a) => a.id === builderAgeId)?.label || "";
-      const titleText = builderThemeName || "Träningspass";
+      const isYoungAge = builderAgeId === "6-7";
+      const themeList = isYoungAge ? YOUNG_THEMES : THEMES;
+      const selectedTheme = themeList.find((t) => t.id === builderThemeId);
+      const titleText = builderThemeName || selectedTheme?.name || "Träningspass";
 
+      const ensureSpace = (needed) => {
+        if (y + needed > 780) {
+          doc.addPage();
+          y = 56;
+        }
+      };
+
+      const writeBullets = (items, indent = 0) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(90, 100, 110);
+        items.forEach((text) => {
+          const lines = doc.splitTextToSize("• " + text, bodyWidth - indent);
+          lines.forEach((line) => {
+            ensureSpace(14);
+            doc.text(line, marginX + indent, y);
+            y += 14;
+          });
+        });
+      };
+
+      const writeSectionHeading = (title, time) => {
+        ensureSpace(30);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.setTextColor(11, 42, 61);
+        doc.text(title, marginX, y);
+        if (time) {
+          const timeW = doc.getTextWidth(time);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setTextColor(140, 150, 160);
+          doc.text(time, pageWidth - marginX - timeW, y);
+        }
+        y += 18;
+      };
+
+      // ---- Header ----
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.setTextColor(20, 118, 196);
@@ -1372,52 +1509,101 @@ export default function App() {
       doc.line(marginX, y, pageWidth - marginX, y);
       y += 24;
 
-      builderBlocks.forEach((block, idx) => {
-        if (y > 720) {
-          doc.addPage();
-          y = 56;
-        }
-        const exerciseText = block.useCustomExercise ? block.customExercise : block.exercise;
+      // ---- Samling – uppstart ----
+      writeSectionHeading("Samling – uppstart", builderOpening.time);
+      if (builderOpening.note) writeBullets([builderOpening.note]);
+      y += 14;
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(13);
-        doc.setTextColor(11, 42, 61);
-        doc.text(`${idx + 1}. ${block.title || "Block"}`, marginX, y);
-        const timeW = doc.getTextWidth(block.time || "");
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(140, 150, 160);
-        doc.text(block.time || "", pageWidth - marginX - timeW, y);
-        y += 18;
+      // ---- Block ----
+      for (let idx = 0; idx < builderBlocks.length; idx++) {
+        const block = builderBlocks[idx];
+        ensureSpace(40);
+        writeSectionHeading(`${idx + 1}. ${block.title || "Block"}`, block.time);
 
-        if (exerciseText) {
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(10.5);
-          doc.setTextColor(50, 58, 66);
-          doc.text("Övning: " + exerciseText, marginX, y);
-          y += 16;
-        }
+        if (block.type === "free") {
+          if (block.infoPoints && block.infoPoints.length) {
+            writeBullets(block.infoPoints);
+          }
+        } else if (block.type === "themed") {
+          const selectedOptions = (block.themeOptions || []).filter((o) => o.selected).map((o) => o.text);
+          const allConstraints = [...selectedOptions, ...(block.customConstraints || [])];
+          if (allConstraints.length) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10.5);
+            doc.setTextColor(50, 58, 66);
+            ensureSpace(16);
+            doc.text("Constraints:", marginX, y);
+            y += 16;
+            writeBullets(allConstraints, 10);
+          }
+        } else {
+          // type === "exercise"
+          const exerciseText = block.useCustomExercise ? block.customExercise : block.exercise;
 
-        if (block.constraints && block.constraints.length) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
-          doc.setTextColor(90, 100, 110);
-          block.constraints.forEach((c) => {
-            const lines = doc.splitTextToSize("• " + c, pageWidth - marginX * 2 - 10);
-            lines.forEach((line) => {
-              doc.text(line, marginX + 10, y);
-              y += 14;
-            });
-          });
+          if (exerciseText) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10.5);
+            doc.setTextColor(50, 58, 66);
+            ensureSpace(16);
+            doc.text("Övning: " + exerciseText, marginX, y);
+            y += 16;
+          }
+
+          if (block.constraints && block.constraints.length) {
+            writeBullets(block.constraints, 10);
+          }
+
+          // Rikare innehåll för det tekniska blockets övning: diagram + coachingpunkter.
+          if (block.richPdf && !block.useCustomExercise && exerciseText) {
+            const diagram = DIAGRAMS[exerciseText];
+            if (diagram && diagram.svg) {
+              try {
+                const { dataUrl, width, height } = await svgToPngDataUrl(diagram.svg, 560);
+                const imgW = Math.min(220, bodyWidth);
+                const imgH = (height / width) * imgW;
+                ensureSpace(imgH + 10);
+                doc.addImage(dataUrl, "PNG", marginX, y, imgW, imgH);
+                y += imgH + 8;
+                if (diagram.caption) {
+                  doc.setFont("helvetica", "italic");
+                  doc.setFontSize(9);
+                  doc.setTextColor(140, 150, 160);
+                  const capLines = doc.splitTextToSize(diagram.caption, bodyWidth);
+                  capLines.forEach((line) => {
+                    ensureSpace(12);
+                    doc.text(line, marginX, y);
+                    y += 12;
+                  });
+                  y += 4;
+                }
+              } catch (imgErr) {
+                console.error("Kunde inte rendera diagram till PDF", imgErr);
+              }
+            }
+
+            const points = COACHING_POINTS[exerciseText];
+            if (points && points.length) {
+              doc.setFont("helvetica", "bold");
+              doc.setFontSize(10.5);
+              doc.setTextColor(50, 58, 66);
+              ensureSpace(16);
+              doc.text("Coachingpunkter för övningen:", marginX, y);
+              y += 16;
+              writeBullets(points, 10);
+            }
+          }
         }
         y += 14;
-      });
+      }
 
+      // ---- Samling – avslutning ----
+      writeSectionHeading("Samling – avslutning", builderClosing.time);
+      if (builderClosing.note) writeBullets([builderClosing.note]);
+      y += 14;
+
+      // ---- Tränarens tumregler ----
       if (builderCoaching.length) {
-        if (y > 680) {
-          doc.addPage();
-          y = 56;
-        }
+        ensureSpace(40);
         y += 6;
         doc.setDrawColor(221, 226, 231);
         doc.line(marginX, y, pageWidth - marginX, y);
@@ -1425,22 +1611,9 @@ export default function App() {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
         doc.setTextColor(11, 42, 61);
-        doc.text("COACHINGPUNKTER", marginX, y);
+        doc.text("TRÄNARENS TUMREGLER", marginX, y);
         y += 18;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10.5);
-        doc.setTextColor(50, 58, 66);
-        builderCoaching.forEach((point) => {
-          if (y > 760) {
-            doc.addPage();
-            y = 56;
-          }
-          const lines = doc.splitTextToSize("• " + point, pageWidth - marginX * 2);
-          lines.forEach((line) => {
-            doc.text(line, marginX, y);
-            y += 15;
-          });
-        });
+        writeBullets(builderCoaching);
       }
 
       const fileName = `${(titleText || "traning").replace(/[^a-zA-Z0-9åäöÅÄÖ]+/g, "-")}.pdf`;
@@ -2925,6 +3098,58 @@ export default function App() {
                         fontFamily: "'Inter', sans-serif",
                       }}
                     />
+
+                    {builderAgeId && (
+                      <>
+                        <div
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: "0.64rem",
+                            letterSpacing: "0.06em",
+                            color: "#1476C4",
+                            textTransform: "uppercase",
+                            padding: "20px 0 8px",
+                          }}
+                        >
+                          Vilket tema? (styr constraints i block 4)
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {(builderAgeId === "6-7" ? YOUNG_THEMES : THEMES).map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => builderSelectTheme(t.id)}
+                              className="flex items-center gap-2.5"
+                              style={{
+                                padding: "12px 14px",
+                                borderRadius: 12,
+                                border: builderThemeId === t.id ? "2px solid #1476C4" : "1.5px solid #DDE2E7",
+                                background: builderThemeId === t.id ? "#EAF4FC" : "#fff",
+                                textAlign: "left",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: 3,
+                                  background: "#5EC2E8",
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <span
+                                style={{
+                                  fontSize: "0.85rem",
+                                  fontWeight: builderThemeId === t.id ? 600 : 400,
+                                  color: builderThemeId === t.id ? "#0B2A3D" : "#33383D",
+                                }}
+                              >
+                                {t.name}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -2941,10 +3166,61 @@ export default function App() {
                     >
                       Bygg dina block
                     </h3>
+
+                    {/* Samling – uppstart */}
+                    <div
+                      className="mb-4"
+                      style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #DDE2E7", overflow: "hidden" }}
+                    >
+                      <div
+                        className="flex items-center gap-2 px-3 py-2.5"
+                        style={{ background: "#F6F8FA", borderBottom: "1px solid #DDE2E7" }}
+                      >
+                        <Users2 size={15} style={{ color: "#1476C4", flexShrink: 0 }} />
+                        <div style={{ flex: 1, fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: "0.9rem" }}>
+                          Samling – uppstart
+                        </div>
+                        <input
+                          type="text"
+                          value={builderOpening.time}
+                          onChange={(e) => setBuilderOpening((p) => ({ ...p, time: e.target.value }))}
+                          style={{
+                            width: 56,
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: "0.68rem",
+                            color: "#8A929B",
+                            border: "none",
+                            background: "transparent",
+                            textAlign: "right",
+                            flexShrink: 0,
+                          }}
+                        />
+                      </div>
+                      <div className="p-3">
+                        <textarea
+                          value={builderOpening.note}
+                          onChange={(e) => setBuilderOpening((p) => ({ ...p, note: e.target.value }))}
+                          placeholder="T.ex. presentera dagens tema och fokus"
+                          rows={2}
+                          style={{
+                            width: "100%",
+                            padding: "9px 10px",
+                            borderRadius: 9,
+                            border: "1.5px solid #DDE2E7",
+                            fontSize: "0.85rem",
+                            fontFamily: "'Inter', sans-serif",
+                            resize: "vertical",
+                          }}
+                        />
+                      </div>
+                    </div>
+
                     {builderBlocks.map((block, idx) => {
                       const ageForBuilder = AGE_GROUPS.find((a) => a.id === builderAgeId);
                       const ageBlock = ageForBuilder && ageForBuilder.blocks[idx];
                       const options = ageBlock ? ageBlock.exercises || ageBlock.altExercises || [] : [];
+                      const canRemove = idx >= 4;
+
                       return (
                         <div
                           key={idx}
@@ -2987,7 +3263,7 @@ export default function App() {
                                 flexShrink: 0,
                               }}
                             />
-                            {builderBlocks.length > 1 && (
+                            {canRemove && (
                               <button
                                 onClick={() => builderRemoveBlock(idx)}
                                 style={{ color: "#B84A4A", fontSize: "0.72rem", border: "none", background: "none", flexShrink: 0 }}
@@ -2996,155 +3272,290 @@ export default function App() {
                               </button>
                             )}
                           </div>
-                          <div className="p-3">
-                            <div
-                              style={{
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: "0.6rem",
-                                letterSpacing: "0.05em",
-                                color: "#8A929B",
-                                textTransform: "uppercase",
-                                marginBottom: 6,
-                              }}
-                            >
-                              Övning
-                            </div>
-                            {!block.useCustomExercise ? (
-                              <>
-                                <select
-                                  value={block.exercise}
-                                  onChange={(e) => builderUpdateBlock(idx, { exercise: e.target.value })}
-                                  style={{
-                                    width: "100%",
-                                    padding: "9px 10px",
-                                    borderRadius: 9,
-                                    border: "1.5px solid #DDE2E7",
-                                    fontSize: "0.85rem",
-                                    marginBottom: 8,
-                                  }}
-                                >
-                                  {options.map((ex) => (
-                                    <option key={ex} value={ex}>
-                                      {ex}
-                                    </option>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={() => builderUpdateBlock(idx, { useCustomExercise: true })}
-                                  style={{ fontSize: "0.75rem", color: "#1476C4", border: "none", background: "none" }}
-                                >
-                                  Eller skriv egen övning →
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <input
-                                  type="text"
-                                  value={block.customExercise}
-                                  onChange={(e) => builderUpdateBlock(idx, { customExercise: e.target.value })}
-                                  placeholder="Skriv egen övning..."
-                                  style={{
-                                    width: "100%",
-                                    padding: "9px 10px",
-                                    borderRadius: 9,
-                                    border: "1.5px solid #DDE2E7",
-                                    fontSize: "0.85rem",
-                                    marginBottom: 8,
-                                  }}
-                                />
-                                {options.length > 0 && (
-                                  <button
-                                    onClick={() => builderUpdateBlock(idx, { useCustomExercise: false })}
-                                    style={{ fontSize: "0.75rem", color: "#1476C4", border: "none", background: "none" }}
-                                  >
-                                    ← Välj bland befintliga övningar
-                                  </button>
-                                )}
-                              </>
-                            )}
 
-                            <div
-                              style={{
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: "0.6rem",
-                                letterSpacing: "0.05em",
-                                color: "#8A929B",
-                                textTransform: "uppercase",
-                                margin: "12px 0 6px",
-                              }}
-                            >
-                              Constraints / anpassningar
-                            </div>
-                            <div className="flex flex-wrap gap-1.5 mb-2">
-                              {(block.constraints || []).map((c, cIdx) => (
-                                <span
-                                  key={cIdx}
-                                  style={{
-                                    fontSize: "0.72rem",
-                                    padding: "5px 9px",
-                                    borderRadius: 20,
-                                    background: "#EAF4FC",
-                                    color: "#0B2A3D",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                  }}
-                                >
-                                  {c}
-                                  <span
-                                    onClick={() => builderRemoveConstraint(idx, cIdx)}
-                                    style={{ cursor: "pointer", color: "#8A929B" }}
-                                  >
-                                    ✕
-                                  </span>
-                                </span>
-                              ))}
-                            </div>
-                            <div className="flex gap-1.5">
-                              <input
-                                type="text"
-                                value={builderConstraintInputs[idx] || ""}
-                                onChange={(e) =>
-                                  setBuilderConstraintInputs((prev) => ({ ...prev, [idx]: e.target.value }))
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    builderAddConstraint(idx);
-                                  }
-                                }}
-                                placeholder="t.ex. Endast höger fot"
+                          {block.type === "free" && (
+                            <div className="p-3">
+                              <div
                                 style={{
-                                  flex: 1,
-                                  padding: "8px 10px",
-                                  borderRadius: 9,
-                                  border: "1.5px solid #DDE2E7",
-                                  fontSize: "0.8rem",
-                                  minWidth: 0,
-                                }}
-                              />
-                              <button
-                                onClick={() => builderAddConstraint(idx)}
-                                style={{
-                                  padding: "8px 14px",
-                                  borderRadius: 9,
-                                  background: "#0B2A3D",
-                                  color: "#fff",
-                                  fontSize: "0.75rem",
-                                  border: "none",
-                                  flexShrink: 0,
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  fontSize: "0.6rem",
+                                  letterSpacing: "0.05em",
+                                  color: "#8A929B",
+                                  textTransform: "uppercase",
+                                  marginBottom: 6,
                                 }}
                               >
-                                Lägg till
-                              </button>
+                                Fritt spel — ingen övning eller constraints
+                              </div>
+                              {block.infoPoints && block.infoPoints.length > 0 && (
+                                <ul style={{ paddingLeft: 16, margin: 0 }}>
+                                  {block.infoPoints.map((p, i) => (
+                                    <li key={i} style={{ fontSize: "0.8rem", color: "#5B6169", marginBottom: 4 }}>
+                                      {p}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
-                          </div>
+                          )}
+
+                          {block.type === "themed" && (
+                            <div className="p-3">
+                              <div
+                                style={{
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  fontSize: "0.6rem",
+                                  letterSpacing: "0.05em",
+                                  color: "#8A929B",
+                                  textTransform: "uppercase",
+                                  marginBottom: 8,
+                                }}
+                              >
+                                Constraints kopplade till temat
+                              </div>
+                              {!builderThemeId ? (
+                                <p style={{ fontSize: "0.78rem", color: "#B7BEC5" }}>
+                                  Välj ett tema i steg 1 för att se constraints här.
+                                </p>
+                              ) : (
+                                <div className="flex flex-col gap-2 mb-3">
+                                  {(block.themeOptions || []).map((opt, oi) => (
+                                    <label key={oi} className="flex items-start gap-2" style={{ fontSize: "0.82rem", color: "#262A2E" }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={opt.selected}
+                                        onChange={() => builderToggleThemeOption(idx, oi)}
+                                        style={{ marginTop: 3, flexShrink: 0 }}
+                                      />
+                                      <span>{opt.text}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div className="flex flex-wrap gap-1.5 mb-2">
+                                {(block.customConstraints || []).map((c, cIdx) => (
+                                  <span
+                                    key={cIdx}
+                                    style={{
+                                      fontSize: "0.72rem",
+                                      padding: "5px 9px",
+                                      borderRadius: 20,
+                                      background: "#EAF4FC",
+                                      color: "#0B2A3D",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 6,
+                                    }}
+                                  >
+                                    {c}
+                                    <span
+                                      onClick={() => builderRemoveCustomConstraint(idx, cIdx)}
+                                      style={{ cursor: "pointer", color: "#8A929B" }}
+                                    >
+                                      ✕
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="flex gap-1.5">
+                                <input
+                                  type="text"
+                                  value={builderConstraintInputs[idx] || ""}
+                                  onChange={(e) =>
+                                    setBuilderConstraintInputs((prev) => ({ ...prev, [idx]: e.target.value }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      builderAddCustomConstraint(idx);
+                                    }
+                                  }}
+                                  placeholder="Lägg till eget constraint..."
+                                  style={{
+                                    flex: 1,
+                                    padding: "8px 10px",
+                                    borderRadius: 9,
+                                    border: "1.5px solid #DDE2E7",
+                                    fontSize: "0.8rem",
+                                    minWidth: 0,
+                                  }}
+                                />
+                                <button
+                                  onClick={() => builderAddCustomConstraint(idx)}
+                                  style={{
+                                    padding: "8px 14px",
+                                    borderRadius: 9,
+                                    background: "#0B2A3D",
+                                    color: "#fff",
+                                    fontSize: "0.75rem",
+                                    border: "none",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  Lägg till
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {block.type === "exercise" && (
+                            <div className="p-3">
+                              <div
+                                style={{
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  fontSize: "0.6rem",
+                                  letterSpacing: "0.05em",
+                                  color: "#8A929B",
+                                  textTransform: "uppercase",
+                                  marginBottom: 6,
+                                }}
+                              >
+                                Övning
+                                {block.richPdf && (
+                                  <span style={{ color: "#1476C4", textTransform: "none", letterSpacing: 0 }}>
+                                    {" "}
+                                    · diagram + coachingpunkter följer med i PDF:en
+                                  </span>
+                                )}
+                              </div>
+                              {!block.useCustomExercise ? (
+                                <>
+                                  <select
+                                    value={block.exercise}
+                                    onChange={(e) => builderUpdateBlock(idx, { exercise: e.target.value })}
+                                    style={{
+                                      width: "100%",
+                                      padding: "9px 10px",
+                                      borderRadius: 9,
+                                      border: "1.5px solid #DDE2E7",
+                                      fontSize: "0.85rem",
+                                      marginBottom: 8,
+                                    }}
+                                  >
+                                    {options.map((ex) => (
+                                      <option key={ex} value={ex}>
+                                        {ex}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => builderUpdateBlock(idx, { useCustomExercise: true })}
+                                    style={{ fontSize: "0.75rem", color: "#1476C4", border: "none", background: "none" }}
+                                  >
+                                    Eller skriv egen övning →
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <input
+                                    type="text"
+                                    value={block.customExercise}
+                                    onChange={(e) => builderUpdateBlock(idx, { customExercise: e.target.value })}
+                                    placeholder="Skriv egen övning..."
+                                    style={{
+                                      width: "100%",
+                                      padding: "9px 10px",
+                                      borderRadius: 9,
+                                      border: "1.5px solid #DDE2E7",
+                                      fontSize: "0.85rem",
+                                      marginBottom: 8,
+                                    }}
+                                  />
+                                  {options.length > 0 && (
+                                    <button
+                                      onClick={() => builderUpdateBlock(idx, { useCustomExercise: false })}
+                                      style={{ fontSize: "0.75rem", color: "#1476C4", border: "none", background: "none" }}
+                                    >
+                                      ← Välj bland befintliga övningar
+                                    </button>
+                                  )}
+                                </>
+                              )}
+
+                              <div
+                                style={{
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  fontSize: "0.6rem",
+                                  letterSpacing: "0.05em",
+                                  color: "#8A929B",
+                                  textTransform: "uppercase",
+                                  margin: "12px 0 6px",
+                                }}
+                              >
+                                Constraints / anpassningar
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 mb-2">
+                                {(block.constraints || []).map((c, cIdx) => (
+                                  <span
+                                    key={cIdx}
+                                    style={{
+                                      fontSize: "0.72rem",
+                                      padding: "5px 9px",
+                                      borderRadius: 20,
+                                      background: "#EAF4FC",
+                                      color: "#0B2A3D",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 6,
+                                    }}
+                                  >
+                                    {c}
+                                    <span
+                                      onClick={() => builderRemoveConstraint(idx, cIdx)}
+                                      style={{ cursor: "pointer", color: "#8A929B" }}
+                                    >
+                                      ✕
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="flex gap-1.5">
+                                <input
+                                  type="text"
+                                  value={builderConstraintInputs[idx] || ""}
+                                  onChange={(e) =>
+                                    setBuilderConstraintInputs((prev) => ({ ...prev, [idx]: e.target.value }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      builderAddConstraint(idx);
+                                    }
+                                  }}
+                                  placeholder="t.ex. Endast höger fot"
+                                  style={{
+                                    flex: 1,
+                                    padding: "8px 10px",
+                                    borderRadius: 9,
+                                    border: "1.5px solid #DDE2E7",
+                                    fontSize: "0.8rem",
+                                    minWidth: 0,
+                                  }}
+                                />
+                                <button
+                                  onClick={() => builderAddConstraint(idx)}
+                                  style={{
+                                    padding: "8px 14px",
+                                    borderRadius: 9,
+                                    background: "#0B2A3D",
+                                    color: "#fff",
+                                    fontSize: "0.75rem",
+                                    border: "none",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  Lägg till
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                     <button
                       onClick={builderAddBlock}
-                      className="w-full"
+                      className="w-full mb-4"
                       style={{
                         padding: "13px 0",
                         borderRadius: 12,
@@ -3158,6 +3569,53 @@ export default function App() {
                     >
                       + Lägg till block {builderBlocks.length + 1}
                     </button>
+
+                    {/* Samling – avslutning */}
+                    <div
+                      style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #DDE2E7", overflow: "hidden" }}
+                    >
+                      <div
+                        className="flex items-center gap-2 px-3 py-2.5"
+                        style={{ background: "#F6F8FA", borderBottom: "1px solid #DDE2E7" }}
+                      >
+                        <Users2 size={15} style={{ color: "#1476C4", flexShrink: 0 }} />
+                        <div style={{ flex: 1, fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: "0.9rem" }}>
+                          Samling – avslutning
+                        </div>
+                        <input
+                          type="text"
+                          value={builderClosing.time}
+                          onChange={(e) => setBuilderClosing((p) => ({ ...p, time: e.target.value }))}
+                          style={{
+                            width: 56,
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: "0.68rem",
+                            color: "#8A929B",
+                            border: "none",
+                            background: "transparent",
+                            textAlign: "right",
+                            flexShrink: 0,
+                          }}
+                        />
+                      </div>
+                      <div className="p-3">
+                        <textarea
+                          value={builderClosing.note}
+                          onChange={(e) => setBuilderClosing((p) => ({ ...p, note: e.target.value }))}
+                          placeholder="T.ex. kort utvärdering av passet"
+                          rows={2}
+                          style={{
+                            width: "100%",
+                            padding: "9px 10px",
+                            borderRadius: 9,
+                            border: "1.5px solid #DDE2E7",
+                            fontSize: "0.85rem",
+                            fontFamily: "'Inter', sans-serif",
+                            resize: "vertical",
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -3172,10 +3630,10 @@ export default function App() {
                         marginBottom: 6,
                       }}
                     >
-                      Coachingpunkter
+                      Tränarens tumregler
                     </h3>
                     <p style={{ fontSize: "0.78rem", color: "#8A929B", marginBottom: 12 }}>
-                      Följer med i PDF:en. Bocka ur det som inte passar, eller lägg till egna.
+                      Följer med i PDF:en som allmänna riktlinjer för passet. Bocka ur det som inte passar, eller lägg till egna.
                     </p>
                     <div className="flex flex-col gap-2 mb-4">
                       {builderCoaching.map((point, i) => (
@@ -3201,7 +3659,7 @@ export default function App() {
                             builderAddCustomCoaching();
                           }
                         }}
-                        placeholder="Lägg till egen coachingpunkt..."
+                        placeholder="Lägg till egen tumregel..."
                         style={{
                           flex: 1,
                           padding: "9px 10px",
@@ -3241,20 +3699,53 @@ export default function App() {
                         Sammanfattning
                       </h4>
                       <div style={{ fontSize: "0.85rem", color: "#5B6169", marginBottom: 10 }}>
-                        {builderThemeName || "Träningspass"} · {AGE_GROUPS.find((a) => a.id === builderAgeId)?.label} ·{" "}
-                        {builderBlocks.length} block
+                        {builderThemeName ||
+                          (builderAgeId === "6-7" ? YOUNG_THEMES : THEMES).find((t) => t.id === builderThemeId)?.name ||
+                          "Träningspass"}{" "}
+                        · {AGE_GROUPS.find((a) => a.id === builderAgeId)?.label} · {builderBlocks.length} block
                       </div>
+
+                      <div style={{ marginBottom: 10, paddingLeft: 12, borderLeft: "3px solid #5EC2E8" }}>
+                        <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: "0.85rem", color: "#0B2A3D" }}>
+                          Samling – uppstart — {builderOpening.time}
+                        </div>
+                        {builderOpening.note && (
+                          <div style={{ fontSize: "0.78rem", color: "#5B6169" }}>{builderOpening.note}</div>
+                        )}
+                      </div>
+
                       {builderBlocks.map((b, i) => (
                         <div key={i} style={{ marginBottom: 10, paddingLeft: 12, borderLeft: "3px solid #1476C4" }}>
                           <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: "0.85rem", color: "#0B2A3D" }}>
                             {i + 1}. {b.title} — {b.time}
                           </div>
                           <div style={{ fontSize: "0.78rem", color: "#5B6169" }}>
-                            {(b.useCustomExercise ? b.customExercise : b.exercise) || "—"}
-                            {b.constraints && b.constraints.length > 0 ? " · " + b.constraints.join(", ") : ""}
+                            {b.type === "free" &&
+                              (b.infoPoints && b.infoPoints.length ? b.infoPoints.join(" · ") : "Fritt spel")}
+                            {b.type === "themed" &&
+                              (() => {
+                                const selected = (b.themeOptions || []).filter((o) => o.selected).map((o) => o.text);
+                                const all = [...selected, ...(b.customConstraints || [])];
+                                return all.length ? all.join(", ") : "Inga constraints valda";
+                              })()}
+                            {b.type === "exercise" && (
+                              <>
+                                {(b.useCustomExercise ? b.customExercise : b.exercise) || "—"}
+                                {b.constraints && b.constraints.length > 0 ? " · " + b.constraints.join(", ") : ""}
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
+
+                      <div style={{ marginBottom: 10, paddingLeft: 12, borderLeft: "3px solid #5EC2E8" }}>
+                        <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: "0.85rem", color: "#0B2A3D" }}>
+                          Samling – avslutning — {builderClosing.time}
+                        </div>
+                        {builderClosing.note && (
+                          <div style={{ fontSize: "0.78rem", color: "#5B6169" }}>{builderClosing.note}</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -3292,12 +3783,12 @@ export default function App() {
                 {builderStep < 3 && (
                   <button
                     onClick={() => setBuilderStep((s) => s + 1)}
-                    disabled={builderStep === 1 && !builderAgeId}
+                    disabled={builderStep === 1 && (!builderAgeId || !builderThemeId)}
                     className="flex-1"
                     style={{
                       padding: "13px 0",
                       borderRadius: 10,
-                      background: builderStep === 1 && !builderAgeId ? "#B7BEC5" : "#0B2A3D",
+                      background: builderStep === 1 && (!builderAgeId || !builderThemeId) ? "#B7BEC5" : "#0B2A3D",
                       color: "#fff",
                       fontFamily: "'Anton', sans-serif",
                       fontSize: "0.78rem",
