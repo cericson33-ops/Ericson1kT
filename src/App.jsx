@@ -976,12 +976,8 @@ const THEMES = [
         explanation: "Dribblar spelaren förbi en försvarare innan avslut räknas målet dubbelt. Ett vanligt mål gäller som vanligt.",
       },
       {
-        text: "Bonus för lyckad 1 mot 1.",
-        explanation: "Extra poäng när en spelare vinner en 1 mot 1-duell, offensivt eller defensivt.",
-      },
-      {
-        text: "Alla rör bollen före mål.",
-        explanation: "Målet godkänns bara om samtliga i laget haft en bollberöring under anfallet.",
+        text: "Minst två spelare har nuddat bollen före mål.",
+        explanation: "Målet godkänns bara om minst två spelare i laget haft en bollberöring under anfallet.",
       },
       {
         text: "Bredare plan.",
@@ -1026,8 +1022,8 @@ const THEMES = [
         explanation: "Vilket mål som gäller ändras plötsligt på en given signal, mitt i spelet.",
       },
       {
-        text: "Bonus för spelvändning.",
-        explanation: "Extra poäng när laget lyckas växla spelet från ena sidan av planen till den andra.",
+        text: "Mål räknas dubbelt vid spelvändning.",
+        explanation: "Föregås målet av att laget lyckats växla spelet från ena sidan av planen till den andra räknas det dubbelt.",
       },
       {
         text: "Fyra småmål.",
@@ -1041,12 +1037,8 @@ const THEMES = [
     purpose: "Pressa och vinna tillbaka bollen",
     constraints: [
       {
-        text: "Poäng för bollvinst inom fem sekunder.",
-        explanation: "Extra poäng om laget vinner tillbaka bollen inom fem sekunder efter en bollförlust.",
-      },
-      {
-        text: "Mål efter bollvinst.",
-        explanation: "Ett mål räknas bara om det föregåtts av att laget erövrat bollen.",
+        text: "Dubbla mål efter bollvinst.",
+        explanation: "Mål räknas som dubbelt om det sker efter bollvinst på offensiv planhalva.",
       },
       {
         text: "Alla spelare på egen planhalva.",
@@ -1088,7 +1080,7 @@ const YOUNG_THEMES = [
   {
     id: "anfallsspel",
     name: "Anfallsspel",
-    points: ["Försök spela bollen framåt", "Vem i laget är fri?"],
+    points: ["Försök spela bollen framåt"],
   },
   {
     id: "forsvarsspel",
@@ -1376,6 +1368,48 @@ export default function App() {
     setBuilderBlocks((prev) =>
       prev.map((b, idx) => (idx === 3 ? { ...b, themeOptions: items, customConstraints: [] } : b))
     );
+  };
+
+  // "Snabbgenerera färdigt pass" — kräver att ålder + tema redan är valda.
+  // Block 1: slumpar bland temats egna bonusövningar om sådana finns (bara Omställning idag),
+  // annars bland blockets ordinarie övningar.
+  // Block 3: slumpar bland de övningar som är temakopplade (THEME_EXERCISE_HIGHLIGHT); om temat
+  // saknar egna kopplade övningar (eller åldern saknar övningslista, t.ex. 6–7 år) lämnas blocket orört.
+  // Block 4: väljer exakt ett av temats constraints, resten avbockas.
+  const builderQuickGenerate = () => {
+    if (!builderAgeId || !builderThemeId) return;
+    const age = AGE_GROUPS.find((a) => a.id === builderAgeId);
+    if (!age) return;
+    const isYoung = builderAgeId === "6-7";
+
+    setBuilderBlocks((prev) =>
+      prev.map((b, idx) => {
+        if (idx === 0 && b.type === "exercise") {
+          const base = age.blocks[0].exercises || age.blocks[0].altExercises || [];
+          const extras = !isYoung ? THEME_BLOCK1_EXTRAS[builderThemeId] : null;
+          const pool = extras && extras.length ? extras : base;
+          if (!pool.length) return b;
+          const pick = pool[Math.floor(Math.random() * pool.length)];
+          return { ...b, exercise: pick, useCustomExercise: false, customExercise: "" };
+        }
+        if (idx === 2 && b.type === "exercise") {
+          const base = age.blocks[2].exercises || age.blocks[2].altExercises || [];
+          const highlighted = (THEME_EXERCISE_HIGHLIGHT[builderThemeId] || []).filter((x) => base.includes(x));
+          const pool = highlighted.length ? highlighted : base;
+          if (!pool.length) return b;
+          const pick = pool[Math.floor(Math.random() * pool.length)];
+          return { ...b, exercise: pick, useCustomExercise: false, customExercise: "" };
+        }
+        if (idx === 3 && b.type === "themed") {
+          const options = b.themeOptions || [];
+          if (!options.length) return b;
+          const pickIdx = Math.floor(Math.random() * options.length);
+          return { ...b, themeOptions: options.map((o, i) => ({ ...o, selected: i === pickIdx })) };
+        }
+        return b;
+      })
+    );
+    setBuilderStep(3);
   };
 
   const builderAddBlock = () => {
@@ -3172,6 +3206,61 @@ export default function App() {
                             </button>
                           ))}
                         </div>
+
+                        <button
+                          onClick={builderQuickGenerate}
+                          disabled={!builderThemeId}
+                          className="w-full flex items-center gap-3 mt-4"
+                          style={{
+                            padding: "14px 15px",
+                            borderRadius: 14,
+                            background: builderThemeId
+                              ? "linear-gradient(135deg, #146C93, #0B2A3D)"
+                              : "#E4E8EC",
+                            boxShadow: builderThemeId ? "0 8px 20px rgba(11,42,61,0.3)" : "none",
+                            border: "none",
+                            textAlign: "left",
+                          }}
+                        >
+                          <span
+                            className="flex items-center justify-center flex-shrink-0"
+                            style={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: 10,
+                              background: builderThemeId ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.6)",
+                              fontSize: "1.3rem",
+                            }}
+                          >
+                            🎲
+                          </span>
+                          <span className="flex-1">
+                            <span
+                              style={{
+                                display: "block",
+                                fontFamily: "'Anton', sans-serif",
+                                fontSize: "0.8rem",
+                                letterSpacing: "0.02em",
+                                textTransform: "uppercase",
+                                color: builderThemeId ? "#fff" : "#A6ADB4",
+                              }}
+                            >
+                              Snabbgenerera färdigt pass
+                            </span>
+                            <span
+                              style={{
+                                display: "block",
+                                fontSize: "0.68rem",
+                                marginTop: 2,
+                                color: builderThemeId ? "#B7CBDA" : "#B7BEC5",
+                              }}
+                            >
+                              {builderThemeId
+                                ? "Block 1, 3 & 4 fylls i baserat på valt tema"
+                                : "Välj tema ovan för att aktivera"}
+                            </span>
+                          </span>
+                        </button>
                       </>
                     )}
                   </div>
