@@ -1338,13 +1338,16 @@ export default function App() {
         }
         // Block 1 (uppvärmning) och block 3 (tekniskt block): övning som vanligt.
         const options = b.exercises || b.altExercises || [];
+        // 6–7 års tekniska block saknar egen övningslista (bygger på fri dribbling/eget bollarbete)
+        // — utan tema/Omställning finns då inget att välja, så vi ger ett rimligt default istället för tomt.
+        const fallbackCustom = idx === 2 && options.length === 0 ? "Fri yta" : "";
         return {
           type: "exercise",
           title: b.title,
           time: b.time,
           exercise: options[0] || "",
           useCustomExercise: options.length === 0,
-          customExercise: "",
+          customExercise: fallbackCustom,
           constraints: [],
           richPdf: idx === 0 || idx === 2, // uppvärmning + tekniska blocket tar med diagram (+ ev. coachingpunkter) i PDF
         };
