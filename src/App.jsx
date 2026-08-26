@@ -2867,7 +2867,7 @@ export default function App() {
                   textTransform: "uppercase",
                 }}
               >
-                Bygg eget pass
+                Skapa träning
               </span>
               <span style={{ display: "block", fontSize: "0.68rem", opacity: 0.85, marginTop: 1 }}>
                 Sätt ihop block & dela som PDF
