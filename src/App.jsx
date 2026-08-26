@@ -1394,8 +1394,15 @@ export default function App() {
         }
         if (idx === 2 && b.type === "exercise") {
           const base = age.blocks[2].exercises || age.blocks[2].altExercises || [];
-          const highlighted = (THEME_EXERCISE_HIGHLIGHT[builderThemeId] || []).filter((x) => base.includes(x));
-          const pool = highlighted.length ? highlighted : base;
+          let pool;
+          if (isYoung) {
+            // 6–7 år har ingen egen övningslista i tekniska blocket, men Reaktionsboll/Byta yta
+            // ska gå att slumpa fram där vid Omställning (samma bonuslista som block 1 använder).
+            pool = THEME_BLOCK1_EXTRAS[builderThemeId] || [];
+          } else {
+            const highlighted = (THEME_EXERCISE_HIGHLIGHT[builderThemeId] || []).filter((x) => base.includes(x));
+            pool = highlighted.length ? highlighted : base;
+          }
           if (!pool.length) return b;
           const pick = pool[Math.floor(Math.random() * pool.length)];
           return { ...b, exercise: pick, useCustomExercise: false, customExercise: "" };
@@ -3338,6 +3345,16 @@ export default function App() {
                         builderThemeId &&
                         THEME_BLOCK1_EXTRAS[builderThemeId]
                       ) {
+                        options = [...options, ...THEME_BLOCK1_EXTRAS[builderThemeId].filter((x) => !options.includes(x))];
+                      }
+                      if (
+                        idx === 2 &&
+                        builderAgeId === "6-7" &&
+                        builderThemeId &&
+                        THEME_BLOCK1_EXTRAS[builderThemeId]
+                      ) {
+                        // 6–7 år saknar egen övningslista i tekniska blocket (dribbleArea-baserat),
+                        // men vid Omställning ska Reaktionsboll/Byta yta gå att välja där också.
                         options = [...options, ...THEME_BLOCK1_EXTRAS[builderThemeId].filter((x) => !options.includes(x))];
                       }
                       const canRemove = idx >= 4;
