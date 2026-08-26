@@ -45,8 +45,11 @@ function isCodeExpired(entry) {
 
 // Enkla grafiska diagram som illustrerar övningens uppställning.
 // Nyckeln måste matcha övningens namn exakt.
-const DIAGRAMS = {
+const EXERCISES = {
   Tunnelkull: {
+    blocks: ["warmup"],
+    themes: [],
+    coachingPoints: [],
     caption: "Kullad spelare står med benen isär. En lagkamrat slår en tunnel (bollen mellan benen) för att befria dem.",
     svg: (
       <svg viewBox="0 0 300 190" className="w-full h-auto">
@@ -87,6 +90,9 @@ const DIAGRAMS = {
     ),
   },
   Stoppljus: {
+    blocks: ["warmup"],
+    themes: [],
+    coachingPoints: [],
     caption:
       "Alla driver boll fritt i ytan. Frys på RÖTT, kör vidare på GRÖNT. På GULT kan man t.ex. gå med bollen.",
     svg: (
@@ -108,6 +114,9 @@ const DIAGRAMS = {
     ),
   },
   Svansleken: {
+    blocks: ["warmup"],
+    themes: [],
+    coachingPoints: [],
     caption: "Varje spelare har boll och en \u2018svans\u2019 (band i shortsen). Skydda din egen — samla andras.",
     svg: (
       <svg viewBox="0 0 300 190" className="w-full h-auto">
@@ -130,6 +139,9 @@ const DIAGRAMS = {
     ),
   },
   Poängjakten: {
+    blocks: ["warmup"],
+    themes: [],
+    coachingPoints: [],
     caption: "Alla driver boll fritt i ytan och samlar poäng genom att driva bollen genom konade portar.",
     svg: (
       <svg viewBox="0 0 300 190" className="w-full h-auto">
@@ -163,6 +175,9 @@ const DIAGRAMS = {
     ),
   },
   Djurgården: {
+    blocks: ["technical"],
+    themes: ["1mot1", "scanning"],
+    coachingPoints: ["Överdriv rörelsen", "Tempoväxla", "Höj blicken"],
     caption: "Spelarna driver in mot central kon (ca 5–6 m från varje yttre kona) och utför olika finter/dribblingar och går antigen till höger eller vänster, där lämnar man över boll till nästa spelare i ledet.",
     svg: (
       <svg viewBox="0 0 280 300" className="w-full h-auto">
@@ -226,6 +241,9 @@ const DIAGRAMS = {
     ),
   },
   "1v1": {
+    blocks: ["technical"],
+    themes: ["1mot1", "forsvarsspel"],
+    coachingPoints: ["Överdriv rörelsen", "Tempoväxla", "Defensivt: ta spelaren först, sedan bollen"],
     caption: "Anfallare möter försvarare på ca 10 meter. Anfallaren väljer en av de två portarna att driva igenom. Börja utan boll, bygg på med boll.",
     svg: (
       <svg viewBox="0 0 220 260" className="w-full h-auto">
@@ -255,6 +273,13 @@ const DIAGRAMS = {
     ),
   },
   Reaktionsboll: {
+    blocks: ["warmup", "technical"],
+    themes: ["omstallning"],
+    coachingPoints: [
+      "Snabb första steg efter signalen",
+      "Scanna av ytan snabbt — vart är närmaste lediga boll?",
+      "Koppla till omställning: samma skärpa krävs direkt efter bollvinst/bollförlust",
+    ],
     caption:
       "Alla driver varsin boll fritt i ytan. På signal lämnar alla direkt sin egen boll och rusar för att hitta en annan ledig boll.",
     svg: (
@@ -296,6 +321,9 @@ const DIAGRAMS = {
     ),
   },
   "Byta yta": {
+    blocks: ["warmup", "technical"],
+    themes: ["omstallning"],
+    coachingPoints: [],
     caption: "Spelarna delas i två ytor och kör kull eller egna bollövningar. På tränarens signal byter alla yta med varandra, snabbt och samtidigt.",
     svg: (
       <svg viewBox="0 0 300 190" className="w-full h-auto">
@@ -350,6 +378,9 @@ const DIAGRAMS = {
     ),
   },
   Fotbollshjärnan: {
+    blocks: ["warmup"],
+    themes: [],
+    coachingPoints: [],
     caption: (
       <>
         Alla driver runt varsin boll i ytan. Barnen får hjälpa till att ta fram två roliga ord som ska fungera som kommando. Tex ord 1 = vända med bollen, ord 2 = stanna med sula på bollen.
@@ -397,10 +428,22 @@ const DIAGRAMS = {
     ),
   },
   "Fri yta": {
+    blocks: ["technical"],
+    themes: [],
+    coachingPoints: [
+      "Beror på vilken typ av fint eller vändning spelaren gör — anpassa coachningen efter momentet.",
+    ],
     caption: "Spelarna driver fritt i ytan och testar olika finter, dribblingar och vändningar.",
     svg: <DribbleAreaDiagram />,
   },
   Kvadraten: {
+    blocks: ["technical"],
+    themes: ["passning", "scanning"],
+    coachingPoints: [
+      "Bli spelbar för kompisen",
+      "Ha nästa passning redo innan du får bollen",
+      "Ropa till dig bollen",
+    ],
     caption: "Fyra spelare i en kvadrat (ca 3–4 m per sida) passar bollen mellan sig, en spelare jagar i mitten. Ledaren kan stå i mitten och agera passivt för att göra det enklare.",
     svg: (
       <svg viewBox="0 0 260 280" className="w-full h-auto">
@@ -455,6 +498,13 @@ const DIAGRAMS = {
     ),
   },
   "Kvadraten (4v1 & 3v1)": {
+    blocks: ["technical"],
+    themes: ["passning", "scanning"],
+    coachingPoints: [
+      "Bli spelbar för kompisen",
+      "Ha nästa passning redo innan du får bollen",
+      "Ropa till dig bollen",
+    ],
     caption: "Två varianter sida vid sida (ca 3–4 m per sida): kvadrat med 4 mot 1, och kvadrat med 3 mot 1 (en sida utan spelare). Samma princip, färre passningsalternativ.",
     svg: (
       <svg viewBox="0 0 540 260" className="w-full h-auto">
@@ -510,6 +560,13 @@ const DIAGRAMS = {
     ),
   },
   Passningsportar: {
+    blocks: ["technical"],
+    themes: ["passning", "scanning"],
+    coachingPoints: [
+      "Scanna av var nästa lediga port är",
+      "Passa med bestämdhet genom porten",
+      "Spring direkt till en ny port efter passet",
+    ],
     caption: "Två spelare per boll. Passa genom en port till din kompis som sprungit till andra sidan. Flytta dig alltid till en ny, ledig port efter passet — det kräver att du scannar av ytan.",
     svg: (
       <svg viewBox="0 0 300 210" className="w-full h-auto">
@@ -562,7 +619,7 @@ const DIAGRAMS = {
 
 // ============ VIDEO ============
 // Lägg till en video för en övning genom att sätta `video: "..."` på dess
-// DIAGRAMS-post ovan, t.ex:
+// EXERCISES-post ovan, t.ex:
 //   Tunnelkull: { video: "https://youtu.be/XXXXXXXX", caption: "...", svg: (...) }
 // Stödjer YouTube-länkar, Vimeo-länkar, eller en direkt videofil (.mp4/.webm/.mov,
 // t.ex. en fil du lagt i /public/videos/tunnelkull.mp4 och länkat som "/videos/tunnelkull.mp4").
@@ -1094,52 +1151,32 @@ const YOUNG_THEMES = [
   },
 ];
 
-// Extra övningar i block 1 som bara visas när ett visst tema är valt (gäller inte 6–7 år —
-// där ligger alla övningar, inklusive Reaktionsboll/Byta yta/Fotbollshjärnan, fast utan temakoppling).
-const THEME_BLOCK1_EXTRAS = {
-  omstallning: ["Reaktionsboll", "Byta yta"],
-};
+// Allt om en övning (diagram, beskrivning, coachingpunkter, temakoppling, vilket/vilka
+// block den passar i) ligger nu på ETT ställe: EXERCISES-registret ovan. Nedanstående
+// hjälpfunktioner härleder det som tidigare låg i separata listor (COACHING_POINTS,
+// THEME_EXERCISE_HIGHLIGHT, THEME_BLOCK1_EXTRAS) direkt från registret, så en ny övning
+// bara behöver läggas till på ett ställe för att fungera överallt i appen.
 
-// Coachningspunkter per övning i block 3 (8–9 och 10 år bara — inte 6–7 år).
-const COACHING_POINTS = {
-  "Fri yta": [
-    "Beror på vilken typ av fint eller vändning spelaren gör — anpassa coachningen efter momentet.",
-  ],
-  Djurgården: ["Överdriv rörelsen", "Tempoväxla", "Höj blicken"],
-  "1v1": ["Överdriv rörelsen", "Tempoväxla", "Defensivt: ta spelaren först, sedan bollen"],
-  Kvadraten: [
-    "Bli spelbar för kompisen",
-    "Ha nästa passning redo innan du får bollen",
-    "Ropa till dig bollen",
-  ],
-  "Kvadraten (4v1 & 3v1)": [
-    "Bli spelbar för kompisen",
-    "Ha nästa passning redo innan du får bollen",
-    "Ropa till dig bollen",
-  ],
-  Passningsportar: [
-    "Scanna av var nästa lediga port är",
-    "Passa med bestämdhet genom porten",
-    "Spring direkt till en ny port efter passet",
-  ],
-  Reaktionsboll: [
-    "Snabb första steg efter signalen",
-    "Scanna av ytan snabbt — vart är närmaste lediga boll?",
-    "Koppla till omställning: samma skärpa krävs direkt efter bollvinst/bollförlust",
-  ],
-};
+// Är övningen kopplad till det angivna temat?
+function exerciseMatchesTheme(exName, themeId) {
+  return !!EXERCISES[exName]?.themes?.includes(themeId);
+}
 
-// Vilka block 3-övningar (8–9/10 år) som highlightas som relevanta för respektive tema.
-// Fri yta är alltid neutral — kopplas inte till något tema.
-const THEME_EXERCISE_HIGHLIGHT = {
-  "1mot1": ["Djurgården", "1v1"],
-  passning: ["Kvadraten", "Kvadraten (4v1 & 3v1)", "Passningsportar"],
-  scanning: ["Djurgården", "Kvadraten", "Kvadraten (4v1 & 3v1)", "Passningsportar"],
-  forsvarsspel: ["1v1"],
-  omstallning: ["Reaktionsboll", "Byta yta"],
-};
+// Bonusövningar för ett block: övningar taggade med angiven blocktyp ("warmup" eller
+// "technical") som hör till valt tema men INTE redan ligger i åldersgruppens ordinarie
+// lista för det blocket. Används för block 1:s temabonus (alla åldrar) och för 6–7 års
+// tekniska block, som saknar egen övningslista och därför bara får övningar via tema.
+function getThemeBonusExercises(baseList, themeId, blockType) {
+  if (!themeId) return [];
+  return Object.keys(EXERCISES).filter(
+    (name) =>
+      EXERCISES[name].blocks.includes(blockType) &&
+      exerciseMatchesTheme(name, themeId) &&
+      !baseList.includes(name)
+  );
+}
 
-// Renderar ett övningsdiagram (React SVG-element från DIAGRAMS) till en PNG data-URL,
+// Renderar ett övningsdiagram (React SVG-element från EXERCISES) till en PNG data-URL,
 // så det kan bäddas in i den genererade PDF:en. jsPDF kan inte rita React-SVG direkt,
 // så vi går via en osynlig canvas: SVG → Blob → Image → Canvas → PNG.
 function svgToPngDataUrl(svgReactEl, targetWidthPx = 560) {
@@ -1376,7 +1413,7 @@ export default function App() {
   // "Snabbgenerera färdigt pass" — kräver att ålder + tema redan är valda.
   // Block 1: slumpar bland temats egna bonusövningar om sådana finns (bara Omställning idag),
   // annars bland blockets ordinarie övningar.
-  // Block 3: slumpar bland de övningar som är temakopplade (THEME_EXERCISE_HIGHLIGHT); om temat
+  // Block 3: slumpar bland de övningar som är temakopplade (EXERCISES[x].themes); om temat
   // saknar egna kopplade övningar (eller åldern saknar övningslista, t.ex. 6–7 år) lämnas blocket orört.
   // Block 4: väljer exakt ett av temats constraints, resten avbockas.
   const builderQuickGenerate = () => {
@@ -1389,8 +1426,8 @@ export default function App() {
       prev.map((b, idx) => {
         if (idx === 0 && b.type === "exercise") {
           const base = age.blocks[0].exercises || age.blocks[0].altExercises || [];
-          const extras = !isYoung ? THEME_BLOCK1_EXTRAS[builderThemeId] : null;
-          const pool = extras && extras.length ? extras : base;
+          const extras = !isYoung ? getThemeBonusExercises(base, builderThemeId, "warmup") : [];
+          const pool = extras.length ? extras : base;
           if (!pool.length) return b;
           const pick = pool[Math.floor(Math.random() * pool.length)];
           return { ...b, exercise: pick, useCustomExercise: false, customExercise: "" };
@@ -1400,10 +1437,10 @@ export default function App() {
           let pool;
           if (isYoung) {
             // 6–7 år har ingen egen övningslista i tekniska blocket, men Reaktionsboll/Byta yta
-            // ska gå att slumpa fram där vid Omställning (samma bonuslista som block 1 använder).
-            pool = THEME_BLOCK1_EXTRAS[builderThemeId] || [];
+            // ska gå att slumpa fram där vid Omställning (samma bonuslogik som block 1 använder).
+            pool = getThemeBonusExercises(base, builderThemeId, "technical");
           } else {
-            const highlighted = (THEME_EXERCISE_HIGHLIGHT[builderThemeId] || []).filter((x) => base.includes(x));
+            const highlighted = base.filter((x) => exerciseMatchesTheme(x, builderThemeId));
             pool = highlighted.length ? highlighted : base;
           }
           if (!pool.length) return b;
@@ -1624,7 +1661,7 @@ export default function App() {
 
           // Rikare innehåll för det tekniska blockets övning: diagram + coachingpunkter.
           if (block.richPdf && !block.useCustomExercise && exerciseText) {
-            const diagram = DIAGRAMS[exerciseText];
+            const diagram = EXERCISES[exerciseText];
             if (diagram && diagram.svg) {
               try {
                 const { dataUrl, width, height } = await svgToPngDataUrl(diagram.svg, 560);
@@ -1657,7 +1694,7 @@ export default function App() {
               }
             }
 
-            const points = COACHING_POINTS[exerciseText];
+            const points = EXERCISES[exerciseText]?.coachingPoints;
             if (points && points.length) {
               doc.setFont("helvetica", "bold");
               doc.setFontSize(10.5);
@@ -2503,7 +2540,7 @@ export default function App() {
                           b.altExercises.map((ov, k) => {
                             const exKey = `alt-${i}-${k}`;
                             const isExOpen = openExercise === exKey;
-                            const diagram = DIAGRAMS[ov];
+                            const diagram = EXERCISES[ov];
                             return (
                               <div
                                 key={exKey}
@@ -2564,12 +2601,11 @@ export default function App() {
                       {(b.exercises || ["Övning 1", "Övning 2", "Övning 3"]).map((ov, k) => {
                         const exKey = `${i}-${k}`;
                         const isExOpen = openExercise === exKey;
-                        const diagram = DIAGRAMS[ov];
+                        const diagram = EXERCISES[ov];
                         const isThemeRelevant =
                           i === 2 &&
                           ageId !== "6-7" &&
-                          THEME_EXERCISE_HIGHLIGHT[themeId] &&
-                          THEME_EXERCISE_HIGHLIGHT[themeId].includes(ov);
+                          exerciseMatchesTheme(ov, themeId);
                         return (
                           <div
                             key={k}
@@ -2667,7 +2703,7 @@ export default function App() {
                                   </div>
                                 )}
 
-                                {ageId !== "6-7" && COACHING_POINTS[ov] && (
+                                {ageId !== "6-7" && EXERCISES[ov]?.coachingPoints?.length > 0 && (
                                   <div
                                     className="rounded-lg mt-2 p-2.5"
                                     style={{ background: "#fff", border: "1px solid #E6E9ED" }}
@@ -2685,7 +2721,7 @@ export default function App() {
                                       COACHNINGSPUNKTER
                                     </div>
                                     <ul className="space-y-1">
-                                      {COACHING_POINTS[ov].map((pt, pi) => (
+                                      {EXERCISES[ov].coachingPoints.map((pt, pi) => (
                                         <li
                                           key={pi}
                                           className="flex gap-2 text-sm"
@@ -2714,8 +2750,8 @@ export default function App() {
                         Gäller inte 6–7 år — där ligger samma övningar fast, utan temakoppling. */}
                     {i === 0 &&
                       ageId !== "6-7" &&
-                      THEME_BLOCK1_EXTRAS[themeId] &&
-                      THEME_BLOCK1_EXTRAS[themeId].map((exName, exIdx) => {
+                      getThemeBonusExercises(b.exercises || b.altExercises || [], themeId, "warmup").map(
+                        (exName, exIdx) => {
                         const bonusKey = `theme-bonus-${i}-${exIdx}`;
                         const isBonusOpen = openExercise === bonusKey;
                         return (
@@ -2773,12 +2809,12 @@ export default function App() {
                                   className="rounded-lg p-2"
                                   style={{ background: "#F7F8FA", border: "1px solid #E6E9ED" }}
                                 >
-                                  <ExerciseMedia diagram={DIAGRAMS[exName]} />
+                                  <ExerciseMedia diagram={EXERCISES[exName]} />
                                   <p
                                     className="mt-1 text-xs text-center"
                                     style={{ color: "#146C93", padding: "0 0.25rem" }}
                                   >
-                                    {DIAGRAMS[exName].caption}
+                                    {EXERCISES[exName].caption}
                                   </p>
                                 </div>
                               </div>
@@ -3342,23 +3378,15 @@ export default function App() {
                       const ageForBuilder = AGE_GROUPS.find((a) => a.id === builderAgeId);
                       const ageBlock = ageForBuilder && ageForBuilder.blocks[idx];
                       let options = ageBlock ? ageBlock.exercises || ageBlock.altExercises || [] : [];
-                      if (
-                        idx === 0 &&
-                        builderAgeId !== "6-7" &&
-                        builderThemeId &&
-                        THEME_BLOCK1_EXTRAS[builderThemeId]
-                      ) {
-                        options = [...options, ...THEME_BLOCK1_EXTRAS[builderThemeId].filter((x) => !options.includes(x))];
+                      if (idx === 0 && builderAgeId !== "6-7" && builderThemeId) {
+                        const bonus = getThemeBonusExercises(options, builderThemeId, "warmup");
+                        options = [...options, ...bonus.filter((x) => !options.includes(x))];
                       }
-                      if (
-                        idx === 2 &&
-                        builderAgeId === "6-7" &&
-                        builderThemeId &&
-                        THEME_BLOCK1_EXTRAS[builderThemeId]
-                      ) {
+                      if (idx === 2 && builderAgeId === "6-7" && builderThemeId) {
                         // 6–7 år saknar egen övningslista i tekniska blocket (dribbleArea-baserat),
                         // men vid Omställning ska Reaktionsboll/Byta yta gå att välja där också.
-                        options = [...options, ...THEME_BLOCK1_EXTRAS[builderThemeId].filter((x) => !options.includes(x))];
+                        const bonus = getThemeBonusExercises(options, builderThemeId, "technical");
+                        options = [...options, ...bonus.filter((x) => !options.includes(x))];
                       }
                       const canRemove = idx >= 4;
 
